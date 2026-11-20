@@ -1,14 +1,14 @@
 /**
  * =========================================================================
- * CONFIGURACIÓN DE IMÁGENES PNG POR BARANDA DE CADA ESCALERA
+ * CONFIGURACIÓN DE IMÁGENES PNG EN LAS BARANDAS DE CADA ESCALERA
  * =========================================================================
  * 
- * Cada escalera (del 1 al 18) tiene dos barandas de vidrio:
- * - leftImage:  Ruta al PNG que va en la baranda IZQUIERDA (o null si va limpia)
- * - rightImage: Ruta al PNG que va en la baranda DERECHA (o null si va limpia)
- * - moveWithBelt: true  -> La imagen se desplaza por el vidrio al ritmo exacto de la escalera
- *                 false -> La imagen queda fija pegada en el vidrio
- * - repeatX: Cuántas veces se repite el gráfico a lo largo del vidrio (ej: 1, 2, 3)
+ * Cada escalera tiene un número (del 1 al 24) y dos barandas de vidrio:
+ * - leftImage:  Ruta al archivo PNG para la baranda IZQUIERDA (o null)
+ * - rightImage: Ruta al archivo PNG para la baranda DERECHA (o null)
+ * - moveWithBelt: true (se desliza por el vidrio junto con los escalones)
+ *                 false (queda fija pegada en el vidrio)
+ * - repeatX: Cuántas veces se repite tu imagen a lo largo del vidrio (ej: 1, 2, 3)
  */
 
 export const glassGraphics = {
@@ -32,13 +32,13 @@ export const glassGraphics = {
     },
     4: {
         leftImage: "assets/imagen-01.png",
-        rightImage: null,
+        rightImage: "assets/imagen-02.png",
         moveWithBelt: true,
         repeatX: 1
     },
     5: {
         leftImage: "assets/imagen-02.png",
-        rightImage: "assets/imagen-02.png",
+        rightImage: null,
         moveWithBelt: true,
         repeatX: 1
     },
@@ -50,9 +50,15 @@ export const glassGraphics = {
     },
     9: {
         leftImage: "assets/imagen-01.png",
-        rightImage: "assets/imagen-03.png",
+        rightImage: "assets/imagen-02.png",
         moveWithBelt: true,
         repeatX: 2
+    },
+    10: {
+        leftImage: "assets/imagen-03.png",
+        rightImage: "assets/imagen-01.png",
+        moveWithBelt: true,
+        repeatX: 1
     }
-    // Podés seguir agregando del 7 al 18 con el mismo formato
+    // Podés agregar cualquier escalera del 1 al 24 copiando el mismo bloque
 };

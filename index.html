@@ -3,238 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NEXUS // Laberinto Mecánico 3D</title>
+    <title>NEXUS // Universo de Escaleras Mecánicas 3D</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --bg-dark: #07080a;
-            --border-color: rgba(255, 255, 255, 0.16);
-            --accent-neon: #ff2a6d;
-            --accent-cyan: #05d9e8;
-            --text-main: #f4f6fa;
-            --text-muted: #8b949e;
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            overflow: hidden;
-            background-color: var(--bg-dark);
-            font-family: 'Space Grotesk', sans-serif;
-            color: var(--text-main);
-            user-select: none;
-        }
-
-        canvas {
-            display: block;
-            position: fixed;
-            inset: 0;
-            z-index: 1;
-        }
-
-        /* ==========================================
-           PANTALLA DE INICIO FUTURISTA
-        ========================================== */
-        #landing-ui {
-            position: fixed;
-            inset: 0;
-            z-index: 20;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            padding: 36px 48px;
-            background: radial-gradient(circle at 65% 45%, rgba(7, 8, 10, 0.25) 0%, rgba(5, 6, 8, 0.94) 100%);
-            backdrop-filter: blur(5px);
-            transition: opacity 0.45s ease, visibility 0.45s ease;
-        }
-
-        #landing-ui.hidden {
-            opacity: 0;
-            visibility: hidden;
-            pointer-events: none;
-        }
-
-        .top-bar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 16px;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.78rem;
-            letter-spacing: 2px;
-            color: var(--text-muted);
-        }
-
-        .status-dot {
-            display: inline-block;
-            width: 8px;
-            height: 8px;
-            background-color: var(--accent-cyan);
-            border-radius: 50%;
-            margin-right: 10px;
-            box-shadow: 0 0 12px var(--accent-cyan);
-        }
-
-        .hero-center {
-            max-width: 760px;
-            margin: auto 0;
-        }
-
-        .tag-line {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.8rem;
-            text-transform: uppercase;
-            letter-spacing: 3px;
-            color: var(--accent-cyan);
-            margin-bottom: 14px;
-            display: block;
-        }
-
-        .hero-center h1 {
-            font-size: clamp(2.8rem, 6.5vw, 5.2rem);
-            font-weight: 700;
-            line-height: 0.95;
-            letter-spacing: -2px;
-            text-transform: uppercase;
-            margin-bottom: 22px;
-            background: linear-gradient(180deg, #ffffff 25%, #6e7781 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        .hero-center p {
-            font-size: 1.05rem;
-            line-height: 1.6;
-            color: #b8c0cc;
-            max-width: 550px;
-            margin-bottom: 36px;
-        }
-
-        /* BOTÓN DE ENTRADA AL LABERINTO */
-        #enter-btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 18px;
-            padding: 20px 40px;
-            background: #ffffff;
-            color: #07080a;
-            border: none;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.98rem;
-            font-weight: 700;
-            letter-spacing: 2.5px;
-            text-transform: uppercase;
-            cursor: pointer;
-            transition: all 0.25s ease;
-            box-shadow: 0 0 35px rgba(255, 255, 255, 0.22);
-        }
-
-        #enter-btn:hover {
-            background: var(--accent-cyan);
-            color: #050608;
-            box-shadow: 0 0 40px rgba(5, 217, 232, 0.7);
-            transform: translateY(-2px);
-        }
-
-        #enter-btn span.arrow {
-            font-size: 1.25rem;
-            transition: transform 0.25s ease;
-        }
-
-        #enter-btn:hover span.arrow {
-            transform: translateX(6px);
-        }
-
-        .bottom-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-            gap: 14px;
-            border-top: 1px solid var(--border-color);
-            padding-top: 20px;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.76rem;
-        }
-
-        .control-card {
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            padding: 12px 16px;
-        }
-
-        .control-card strong {
-            display: block;
-            color: #ffffff;
-            margin-bottom: 4px;
-            letter-spacing: 1px;
-        }
-
-        .control-card span {
-            color: var(--text-muted);
-        }
-
-        /* ==========================================
-           HUD EN PRIMERA PERSONA
-        ========================================== */
-        #hud {
-            position: fixed;
-            inset: 0;
-            z-index: 10;
-            pointer-events: none;
-            display: none;
-        }
-
-        #hud.active {
-            display: block;
-        }
-
-        #crosshair {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 14px;
-            height: 14px;
-            border: 1.5px solid rgba(5, 217, 232, 0.85);
-            border-radius: 50%;
-        }
-
-        .hud-top-right {
-            position: fixed;
-            top: 24px;
-            right: 28px;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.78rem;
-            background: rgba(7, 8, 10, 0.72);
-            border: 1px solid rgba(5, 217, 232, 0.35);
-            padding: 10px 16px;
-            color: var(--accent-cyan);
-            letter-spacing: 1.5px;
-        }
-
-        .hud-bottom {
-            position: fixed;
-            bottom: 24px;
-            left: 28px;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.75rem;
-            color: rgba(255, 255, 255, 0.75);
-            letter-spacing: 1.2px;
-            background: rgba(7, 8, 10, 0.75);
-            padding: 10px 16px;
-            border-left: 3px solid var(--accent-neon);
-        }
-
-        @media (max-width: 640px) {
-            #landing-ui { padding: 24px; }
-            .bottom-grid { grid-template-columns: 1fr 1fr; }
-        }
-    </style>
+    <link rel="stylesheet" href="style.css">
 
     <script type="importmap">
         {
@@ -247,328 +19,79 @@
 </head>
 <body>
 
-    <!-- PANTALLA DE BIENVENIDA CON BOTÓN -->
-    <div id="landing-ui">
-        <div class="top-bar">
-            <div><span class="status-dot"></span>ATRIO CINÉTICO // 16 ESCALERAS ACTIVAS</div>
-            <div>ARQUITECTURA BRUTALISTA 3D</div>
-        </div>
+    <!-- =========================================================
+         SECCIÓN 1: PORTADA FUTURISTA
+    ========================================================= -->
+    <section id="home-section" class="section active">
+        <div class="grid-bg"></div>
+        <div class="scanline"></div>
 
-        <div class="hero-center">
-            <span class="tag-line">[ EXPLORACIÓN EN PRIMERA PERSONA ]</span>
-            <h1>LABERINTO<br>MECÁNICO</h1>
-            <p>
-                Recorré un espacio monumental de escaleras mecánicas entrecruzadas. Subite a los escalones en movimiento para viajar entre niveles o explorá libremente alrededor de las estructuras de vidrio y acero.
+        <header class="top-bar">
+            <div class="brand"><span class="pulse-dot"></span>NEXUS // LABERINTO 3D</div>
+            <div class="meta">ARQUITECTURA CINÉTICA INFINITA</div>
+        </header>
+
+        <main class="hero-content">
+            <span class="eyebrow">[ UNIVERSO VIRTUAL INTERACTIVO ]</span>
+            <h1>LABERINTO DE<br>ESCALERAS<br>MECÁNICAS</h1>
+            <p class="subtitle">
+                Entrá a un espacio monumental de 24 escaleras mecánicas entrecruzadas en ascenso y descenso continuo. Recorré los niveles en primera persona, subite a los escalones móviles y visualizá tus imágenes PNG deslizándose sobre las barandas de vidrio.
             </p>
-            <button id="enter-btn">
-                INGRESAR AL LABERINTO <span class="arrow">→</span>
+
+            <button id="enter-universe-btn" class="primary-btn">
+                ENTRAR AL UNIVERSO 3D <span class="arrow">→</span>
             </button>
+        </main>
+
+        <footer class="specs-footer">
+            <div class="spec-box">
+                <span class="spec-num">01</span>
+                <strong>24 ESCALERAS EN 3D</strong>
+                <p>De frente, en diagonal, invertidas, cercanas y monumentales en 5 niveles de altura.</p>
+            </div>
+            <div class="spec-box">
+                <span class="spec-num">02</span>
+                <strong>RECORRIDO WASD + MOUSE</strong>
+                <p>Caminá por el espacio, mirá en 360° y subite a los escalones para viajar entre pisos.</p>
+            </div>
+            <div class="spec-box">
+                <span class="spec-num">03</span>
+                <strong>PNG EN BARANDAS DE VIDRIO</strong>
+                <p>Configurá una imagen distinta por baranda izquierda/derecha animada con la cinta.</p>
+            </div>
+        </footer>
+    </section>
+
+    <!-- =========================================================
+         SECCIÓN 2: ESPACIO VIRTUAL 3D DEL LABERINTO
+    ========================================================= -->
+    <section id="labyrinth-section" class="section">
+        <!-- Acá se dibuja todo el mundo 3D -->
+        <div id="universe-canvas"></div>
+
+        <!-- Cartel flotante superior cuando el cursor está libre -->
+        <div id="lock-banner">
+            <span>Hacé clic en cualquier parte de la escena para mover la vista con el mouse</span>
+            <button id="back-home-btn">← VOLVER A PORTADA</button>
         </div>
 
-        <div class="bottom-grid">
-            <div class="control-card">
-                <strong>[ W A S D / FLECHAS ]</strong>
-                <span>Caminar y subir escaleras</span>
+        <!-- HUD de navegación -->
+        <div id="hud">
+            <div id="crosshair"></div>
+            <div class="hud-top">
+                <div class="hud-pill" id="mode-indicator">MODO: CAMINATA FÍSICA (PISÁ LAS ESCALERAS)</div>
+                <div class="hud-pill" id="altitude-indicator">ALTURA: 0.0m</div>
             </div>
-            <div class="control-card">
-                <strong>[ MOUSE ]</strong>
-                <span>Mirar alrededor en 360°</span>
-            </div>
-            <div class="control-card">
-                <strong>[ ESPACIO / V ]</strong>
-                <span>Saltar / Activar modo vuelo</span>
-            </div>
-            <div class="control-card">
-                <strong>[ ESC ]</strong>
-                <span>Pausar y volver al inicio</span>
+            <div class="hud-bottom">
+                <span><b>W A S D</b>: Caminar</span>
+                <span><b>MOUSE</b>: Mirar 360°</span>
+                <span><b>ESPACIO</b>: Saltar</span>
+                <span><b>V</b>: Volar libremente</span>
+                <span><b>ESC</b>: Liberar mouse / Volver</span>
             </div>
         </div>
-    </div>
+    </section>
 
-    <!-- INTERFAZ DENTRO DEL LABERINTO -->
-    <div id="hud">
-        <div id="crosshair"></div>
-        <div class="hud-top-right" id="status-badge">MODO: CAMINATA (SUBITE A LAS ESCALERAS)</div>
-        <div class="hud-bottom">WASD: CAMINAR // MOUSE: MIRAR // ESPACIO: SALTAR // V: MODO VUELO // ESC: MENÚ</div>
-    </div>
-
-    <script type="module">
-        import * as THREE from 'three';
-        import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
-        import { escalatorImages } from './images.js';
-
-        // ==========================================
-        // 1. ESCENA, NIEBLA Y RENDERER
-        // ==========================================
-        const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x08090c);
-        scene.fog = new THREE.FogExp2(0x08090c, 0.013);
-
-        const EYE_HEIGHT = 1.75;
-        const camera = new THREE.PerspectiveCamera(68, window.innerWidth / window.innerHeight, 0.1, 250);
-        camera.position.set(0, EYE_HEIGHT, 9);
-
-        const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-        renderer.shadowMap.enabled = true;
-        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-        renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        renderer.toneMappingExposure = 1.15;
-        document.body.appendChild(renderer.domElement);
-
-        // ==========================================
-        // 2. ILUMINACIÓN ARQUITECTÓNICA Y NEÓN
-        // ==========================================
-        const ambientLight = new THREE.AmbientLight(0xdce6f2, 0.65);
-        scene.add(ambientLight);
-
-        const topLight = new THREE.DirectionalLight(0xffffff, 2.2);
-        topLight.position.set(16, 55, 20);
-        topLight.castShadow = true;
-        topLight.shadow.mapSize.width = 2048;
-        topLight.shadow.mapSize.height = 2048;
-        const d = 55;
-        topLight.shadow.camera.left = -d;
-        topLight.shadow.camera.right = d;
-        topLight.shadow.camera.top = d;
-        topLight.shadow.camera.bottom = -d;
-        scene.add(topLight);
-
-        const cyanLight = new THREE.PointLight(0x05d9e8, 40, 50);
-        cyanLight.position.set(-14, 12, -18);
-        scene.add(cyanLight);
-
-        const pinkLight = new THREE.PointLight(0xff2a6d, 40, 50);
-        pinkLight.position.set(14, 16, -26);
-        scene.add(pinkLight);
-
-        // ==========================================
-        // 3. ENTORNO BRUTALISTA Y BALCONES
-        // ==========================================
-        const concreteMat = new THREE.MeshStandardMaterial({
-            color: 0x262930,
-            roughness: 0.85,
-            metalness: 0.15
-        });
-
-        const steelMat = new THREE.MeshStandardMaterial({
-            color: 0x8a94a0,
-            roughness: 0.25,
-            metalness: 0.88
-        });
-
-        const darkChassisMat = new THREE.MeshStandardMaterial({
-            color: 0x121418,
-            roughness: 0.4,
-            metalness: 0.8
-        });
-
-        // Piso principal
-        const floor = new THREE.Mesh(new THREE.PlaneGeometry(300, 300), concreteMat);
-        floor.rotation.x = -Math.PI / 2;
-        floor.receiveShadow = true;
-        scene.add(floor);
-
-        const gridHelper = new THREE.GridHelper(240, 96, 0x05d9e8, 0x1c2026);
-        gridHelper.position.y = 0.02;
-        gridHelper.material.opacity = 0.35;
-        gridHelper.material.transparent = true;
-        scene.add(gridHelper);
-
-        // Columnas monumentales
-        const pillarGeo = new THREE.BoxGeometry(2.2, 75, 2.2);
-        [
-            [-16, -6], [16, -6],
-            [-16, -24], [16, -24],
-            [-16, -42], [16, -42],
-            [-28, -15], [28, -15],
-            [-28, -35], [28, -35]
-        ].forEach(([x, z]) => {
-            const pillar = new THREE.Mesh(pillarGeo, concreteMat);
-            pillar.position.set(x, 37.5, z);
-            pillar.castShadow = true;
-            pillar.receiveShadow = true;
-            scene.add(pillar);
-        });
-
-        // Balcones perimetrales y pasarelas aéreas conectadas
-        const walkablePlatforms = []; // Superficies donde el usuario puede caminar
-
-        for (let level = 1; level <= 4; level++) {
-            const yPos = level * 7;
-            [-22, 22].forEach(xPos => {
-                const balcony = new THREE.Mesh(new THREE.BoxGeometry(8, 0.7, 74), concreteMat);
-                balcony.position.set(xPos, yPos - 0.35, -24);
-                balcony.receiveShadow = true;
-                scene.add(balcony);
-
-                walkablePlatforms.push({
-                    minX: xPos - 4, maxX: xPos + 4,
-                    minZ: -61, maxZ: 13,
-                    y: yPos
-                });
-
-                const strip = new THREE.Mesh(
-                    new THREE.BoxGeometry(0.12, 0.12, 74),
-                    new THREE.MeshBasicMaterial({ color: level % 2 === 0 ? 0x05d9e8 : 0xffffff })
-                );
-                strip.position.set(xPos > 0 ? xPos - 4 : xPos + 4, yPos, -24);
-                scene.add(strip);
-            });
-        }
-
-        // ==========================================
-        // 4. LABERINTO DE ESCALERAS MECÁNICAS (16 TRAMOS)
-        // ==========================================
-        const escalatorConfigs = [
-            // Nivel 0 -> Nivel 1 (De frente, una sube y otra baja)
-            { id: 1,  x: -3.5, y: 0,    z: -4,  rotY: 0,            length: 14, width: 2.4, direction: 1,  speed: 1.8, neon: 0x05d9e8 },
-            { id: 2,  x: 3.5,  y: 0,    z: -4,  rotY: 0,            length: 14, width: 2.4, direction: -1, speed: 2.0, neon: 0xff2a6d },
-
-            // Nivel 1 -> Nivel 2 (Cruzadas en sentido contrario)
-            { id: 3,  x: -3.5, y: 7,    z: -16, rotY: 0,            length: 14, width: 2.4, direction: 1,  speed: 1.7, neon: 0xff2a6d },
-            { id: 4,  x: 3.5,  y: 7,    z: -16, rotY: 0,            length: 14, width: 2.4, direction: -1, speed: 2.2, neon: 0x05d9e8 },
-
-            // Laterales perpendiculares (conectan hacia balcones)
-            { id: 5,  x: -9,   y: 0,    z: -14, rotY: Math.PI / 2,  length: 14, width: 2.4, direction: 1,  speed: 1.6, neon: 0xffffff },
-            { id: 6,  x: 9,    y: 0,    z: -24, rotY: -Math.PI / 2, length: 14, width: 2.4, direction: 1,  speed: 1.8, neon: 0x05d9e8 },
-            { id: 7,  x: -9,   y: 7,    z: -28, rotY: Math.PI / 2,  length: 14, width: 2.4, direction: -1, speed: 1.5, neon: 0xff2a6d },
-            { id: 8,  x: 9,    y: 7,    z: -12, rotY: -Math.PI / 2, length: 14, width: 2.4, direction: 1,  speed: 1.9, neon: 0xffffff },
-
-            // Tercer nivel invertido (mirando de frente hacia vos)
-            { id: 9,  x: -4,   y: 14,   z: -32, rotY: Math.PI,      length: 14, width: 2.5, direction: 1,  speed: 1.6, neon: 0x05d9e8 },
-            { id: 10, x: 4,    y: 14,   z: -32, rotY: Math.PI,      length: 14, width: 2.5, direction: -1, speed: 2.1, neon: 0xff2a6d },
-
-            // Nivel superior monumental
-            { id: 11, x: 0,    y: 14,   z: -20, rotY: 0,            length: 14, width: 2.8, direction: 1,  speed: 1.4, neon: 0xffffff },
-            { id: 12, x: -7,   y: 21,   z: -36, rotY: Math.PI / 4,  length: 14, width: 2.3, direction: -1, speed: 1.7, neon: 0x05d9e8 },
-            { id: 13, x: 7,    y: 21,   z: -36, rotY: -Math.PI / 4, length: 14, width: 2.3, direction: 1,  speed: 1.5, neon: 0xff2a6d },
-
-            // Fondo profundo
-            { id: 14, x: 0,    y: 21,   z: -42, rotY: 0,            length: 14, width: 3.0, direction: -1, speed: 1.6, neon: 0x05d9e8 },
-            { id: 15, x: -13,  y: 14,   z: -38, rotY: -Math.PI / 3, length: 14, width: 2.2, direction: 1,  speed: 1.9, neon: 0xffffff },
-            { id: 16, x: 13,   y: 14,   z: -40, rotY: Math.PI / 3,  length: 14, width: 2.2, direction: -1, speed: 1.5, neon: 0xff2a6d }
-        ];
-
-        const glassMat = new THREE.MeshPhysicalMaterial({
-            color: 0xb8dce8,
-            transparent: true,
-            opacity: 0.26,
-            roughness: 0.08,
-            metalness: 0.1,
-            side: THREE.DoubleSide,
-            depthWrite: false
-        });
-
-        const stepMat = new THREE.MeshStandardMaterial({
-            color: 0x2c3036,
-            roughness: 0.3,
-            metalness: 0.9
-        });
-
-        const textureLoader = new THREE.TextureLoader();
-        const activeEscalators = [];
-        const ANGLE = Math.PI / 6; // Inclinación 30°
-
-        escalatorConfigs.forEach(cfg => {
-            const group = new THREE.Group();
-            group.position.set(cfg.x, cfg.y, cfg.z);
-            group.rotation.y = cfg.rotY;
-
-            const height = Math.sin(ANGLE) * cfg.length;
-            const run = Math.cos(ANGLE) * cfg.length;
-
-            // Chasis inferior
-            const chassis = new THREE.Mesh(
-                new THREE.BoxGeometry(cfg.width + 0.45, 0.75, cfg.length),
-                darkChassisMat
-            );
-            chassis.position.set(0, height / 2 - 0.35, -run / 2);
-            chassis.rotation.x = ANGLE;
-            chassis.castShadow = true;
-            chassis.receiveShadow = true;
-            group.add(chassis);
-
-            // Plataformas de embarque (inferior y superior)
-            const landingLen = 2.6;
-            const landingGeo = new THREE.BoxGeometry(cfg.width + 0.45, 0.75, landingLen);
-            const bottomLanding = new THREE.Mesh(landingGeo, steelMat);
-            bottomLanding.position.set(0, -0.375, landingLen / 2);
-            bottomLanding.receiveShadow = true;
-            group.add(bottomLanding);
-
-            const topLanding = new THREE.Mesh(landingGeo, steelMat);
-            topLanding.position.set(0, height - 0.375, -run - landingLen / 2);
-            topLanding.receiveShadow = true;
-            group.add(topLanding);
-
-            // Escalones individuales
-            const stepCount = Math.floor(cfg.length * 2.3);
-            const steps = [];
-            const stepGeo = new THREE.BoxGeometry(cfg.width - 0.12, 0.16, 0.44);
-
-            for (let i = 0; i < stepCount; i++) {
-                const stepMesh = new THREE.Mesh(stepGeo, stepMat);
-                stepMesh.castShadow = true;
-                stepMesh.receiveShadow = true;
-                group.add(stepMesh);
-                steps.push({ mesh: stepMesh, progress: i / stepCount });
-            }
-
-            // Barandas de vidrio + Tira LED + PNG personalizable
-            const railHeight = 1.08;
-            const animatedTextures = [];
-            const imgConfig = escalatorImages.find(item => item.escalatorId === cfg.id);
-
-            [-1, 1].forEach(sideSign => {
-                const sideName = sideSign === -1 ? "left" : "right";
-                const xOffset = sideSign * (cfg.width / 2 + 0.06);
-
-                const railContainer = new THREE.Group();
-                railContainer.position.set(xOffset, height / 2 + railHeight / 2, -run / 2);
-                railContainer.rotation.y = Math.PI / 2;
-                railContainer.rotation.z = ANGLE;
-
-                // Panel de vidrio
-                railContainer.add(new THREE.Mesh(
-                    new THREE.PlaneGeometry(cfg.length, railHeight),
-                    glassMat
-                ));
-
-                // Pasamanos negro superior
-                const handrail = new THREE.Mesh(
-                    new THREE.BoxGeometry(cfg.length + 0.4, 0.1, 0.14),
-                    darkChassisMat
-                );
-                handrail.position.set(0, railHeight / 2 + 0.04, 0);
-                railContainer.add(handrail);
-
-                // Tira LED neón en la base del vidrio
-                const ledStrip = new THREE.Mesh(
-                    new THREE.BoxGeometry(cfg.length, 0.06, 0.08),
-                    new THREE.MeshBasicMaterial({ color: cfg.neon })
-                );
-                ledStrip.position.set(0, -railHeight / 2, 0);
-                railContainer.add(ledStrip);
-
-                // IMAGEN PNG PERSONALIZABLE EN LA BARANDA DE VIDRIO
-                if (imgConfig && (imgConfig.side === "both" || imgConfig.side === sideName)) {
-                    const texture = textureLoader.load(
-                        imgConfig.image,
-                        (tex) => {
-                            tex.wrapS = THREE.RepeatWrapping;
-                            tex.wrapT = THREE.ClampToEdgeWrapping;
-                            tex.repeat.set(imgConfig.repeatX || 1, 1);
-                            tex.colorSpace = THREE.SRGBColorSpace;
-                        },
-                        undefined,
-                        () => {
-                            console.warn("Falta cargar el PNG:", imgConfig.image);
-                        }
-                    );
-
-                    const decalMat = new THREE.MeshBasicMaterial({
-                        map: texture,
-                        transparent: true,
-                        side: THREE.DoubleSide,
+    <script type="module" src="app.js"></script>
+</body>
+</html>

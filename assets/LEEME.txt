@@ -1,0 +1,4 @@
+INSTRUCCIONES RÁPIDAS:
+1. Extraé este archivo ZIP en tu computadora.
+2. Subí los archivos que están ADENTRO de la carpeta LABERINTO (index.html, style.css, images.js, app.js y la carpeta assets/) directamente a la raíz de tu repositorio en GitHub.
+3. Guardá tus imágenes transparentes en formato PNG dentro de assets/ (ej: assets/imagen-01.png) y asignalas en images.js.
