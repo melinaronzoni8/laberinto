@@ -1,0 +1,125 @@
+import * as THREE from 'three';
+import { EscalatorSystem } from './escalators.js';
+import { FirstPersonNavigation } from './controls.js';
+
+// 1. Escena y atmósfera brutalista
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x161719);
+scene.fog = new THREE.FogExp2(0x161719, 0.016); // Neblina densa para profundidad
+
+// 2. Cámara (punto de vista de una persona: 1.75m)
+const camera = new THREE.PerspectiveCamera(
+    65,
+    window.innerWidth / window.innerHeight,
+    0.1,
+    200
+);
+camera.position.set(0, 1.75, 6);
+
+// 3. Renderizador con sombras
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+// 4. Iluminación arquitectónica dramática
+const ambientLight = new THREE.AmbientLight(0xdde4ec, 0.55);
+scene.add(ambientLight);
+
+// Luz cenital principal (simula tragaluces de hormigón)
+const dirLight = new THREE.DirectionalLight(0xffffff, 1.8);
+dirLight.position.set(18, 45, 15);
+dirLight.castShadow = true;
+dirLight.shadow.mapSize.width = 2048;
+dirLight.shadow.mapSize.height = 2048;
+dirLight.shadow.camera.near = 5;
+dirLight.shadow.camera.far = 120;
+const d = 45;
+dirLight.shadow.camera.left = -d;
+dirLight.shadow.camera.right = d;
+dirLight.shadow.camera.top = d;
+dirLight.shadow.camera.bottom = -d;
+scene.add(dirLight);
+
+// Luz de relleno fría desde abajo
+const bounceLight = new THREE.DirectionalLight(0x6b7b8c, 0.5);
+bounceLight.position.set(-20, -10, -30);
+scene.add(bounceLight);
+
+// 5. Arquitectura brutalista del entorno (piso, columnas y vigas)
+function buildBrutalistArchitecture() {
+    const concreteMat = new THREE.MeshStandardMaterial({
+        color: 0x383a3d,
+        roughness: 0.95,
+        metalness: 0.05
+    });
+
+    // Suelo de hormigón
+    const floorGeo = new THREE.PlaneGeometry(250, 250);
+    const floor = new THREE.Mesh(floorGeo, concreteMat);
+    floor.rotation.x = -Math.PI / 2;
+    floor.receiveShadow = true;
+    scene.add(floor);
+
+    // Grilla sutil en el suelo para acentuar perspectiva
+    const grid = new THREE.GridHelper(200, 80, 0x222222, 0x26282a);
+    grid.position.y = 0.01;
+    scene.add(grid);
+
+    // Columnas monumentales distribuidas en el espacio
+    const pillarGeo = new THREE.BoxGeometry(2.4, 60, 2.4);
+    const pillarCoords = [
+        [-16, -8], [16, -8],
+        [-16, -28], [16, -28],
+        [-26, -18], [26, -18],
+        [-10, -48], [10, -48],
+        [-28, -42], [28, -42]
+    ];
+
+    pillarCoords.forEach(([x, z]) => {
+        const pillar = new THREE.Mesh(pillarGeo, concreteMat);
+        pillar.position.set(x, 30, z);
+        pillar.castShadow = true;
+        pillar.receiveShadow = true;
+        scene.add(pillar);
+    });
+
+    // Vigas superiores cruzadas
+    const beamGeo = new THREE.BoxGeometry(80, 1.8, 2.2);
+    [-12, -26, -42].forEach((z, idx) => {
+        const beam = new THREE.Mesh(beamGeo, concreteMat);
+        beam.position.set(0, 22 + idx * 5, z);
+        beam.castShadow = true;
+        scene.add(beam);
+    });
+}
+
+buildBrutalistArchitecture();
+
+// 6. Inicializar escaleras y controles
+const escalatorSystem = new EscalatorSystem(scene);
+const navigation = new FirstPersonNavigation(camera, document.body);
+
+// 7. Adaptar pantalla al redimensionar
+window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// 8. Bucle de animación
+const clock = new THREE.Clock();
+
+function animate() {
+    requestAnimationFrame(animate);
+    const delta = Math.min(clock.getDelta(), 0.1);
+
+    navigation.update(delta);
+    escalatorSystem.update(delta);
+
+    renderer.render(scene, camera);
+}
+
+animate();
