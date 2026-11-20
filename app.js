@@ -263,9 +263,9 @@ function buildEscalatorUniverse() {
             steps.push({ mesh: stepMesh, progress: i / stepCount });
         }
 
-        // Barandas de vidrio + Imágenes PNG por baranda
+        // Barandas de vidrio + Imágenes PNG centradas sin estirarse
         const railHeight = 1.1;
-        const animatedTextures = [];
+        const animatedMeshes = [];
         const gfx = glassGraphics[cfg.id];
 
         [-1, 1].forEach(sideSign => {
@@ -296,45 +296,65 @@ function buildEscalatorUniverse() {
             ledStrip.position.set(0, -railHeight / 2, 0);
             railContainer.add(ledStrip);
 
-            // Imagen PNG configurable por baranda
+            // Imagen PNG centrada exacta sin estirarse ni repetirse
             const pngPath = gfx ? (isLeft ? gfx.leftImage : gfx.rightImage) : null;
             if (pngPath) {
-                const texture = textureLoader.load(
+                const maxPanelW = cfg.length * 0.94;
+                const maxPanelH = railHeight * 0.86;
+
+                textureLoader.load(
                     pngPath,
                     (tex) => {
-                        tex.wrapS = THREE.RepeatWrapping;
-                        tex.wrapT = THREE.ClampToEdgeWrapping;
-                        tex.repeat.set(gfx.repeatX || 1, 1);
                         tex.colorSpace = THREE.SRGBColorSpace;
+                        tex.wrapS = THREE.ClampToEdgeWrapping;
+                        tex.wrapT = THREE.ClampToEdgeWrapping;
+
+                        const imgAspect = tex.image.width / tex.image.height;
+                        const scale = gfx.scale || 0.85;
+
+                        // Calcula el ancho y alto reales manteniendo la proporción exacta del PNG
+                        let meshH = maxPanelH * scale;
+                        let meshW = meshH * imgAspect;
+
+                        // Si el PNG es muy ancho y supera el largo de la escalera, lo ajusta proporcionalmente
+                        if (meshW > maxPanelW * scale) {
+                            meshW = maxPanelW * scale;
+                            meshH = meshW / imgAspect;
+                        }
+
+                        const decalMat = new THREE.MeshBasicMaterial({
+                            map: tex,
+                            transparent: true,
+                            side: THREE.DoubleSide,
+                            depthWrite: false
+                        });
+
+                        const decalMesh = new THREE.Mesh(
+                            new THREE.PlaneGeometry(meshW, meshH),
+                            decalMat
+                        );
+
+                        // Centrado en el medio exacto del vidrio (0, 0)
+                        decalMesh.position.set(0, 0, sideSign * 0.018);
+                        railContainer.add(decalMesh);
+
+                        if (gfx.moveWithBelt !== false) {
+                            animatedMeshes.push({
+                                mesh: decalMesh,
+                                travelSpan: maxPanelW - meshW
+                            });
+                        }
                     },
                     undefined,
                     () => console.warn("Falta subir el archivo PNG:", pngPath)
                 );
-
-                const decalMat = new THREE.MeshBasicMaterial({
-                    map: texture,
-                    transparent: true,
-                    side: THREE.DoubleSide,
-                    depthWrite: false
-                });
-
-                const decalMesh = new THREE.Mesh(
-                    new THREE.PlaneGeometry(cfg.length * 0.94, railHeight * 0.86),
-                    decalMat
-                );
-                decalMesh.position.set(0, 0, sideSign * 0.018);
-                railContainer.add(decalMesh);
-
-                if (gfx.moveWithBelt !== false) {
-                    animatedTextures.push(texture);
-                }
             }
 
             group.add(railContainer);
         });
 
         scene.add(group);
-        escalators.push({ config: cfg, group, steps, height, run, landingLen, animatedTextures });
+        escalators.push({ config: cfg, group, steps, height, run, landingLen, animatedMeshes });
     });
 
     // Física para caminar y viajar sobre los escalones
@@ -462,9 +482,9 @@ function buildEscalatorUniverse() {
 
         const delta = Math.min(clock.getDelta(), 0.08);
 
-        // 1. Animar escalones y gráficos PNG de cada baranda
+        // 1. Animar escalones y gráficos PNG centrados de cada baranda
         escalators.forEach(esc => {
-            const { config, steps, height, run, animatedTextures } = esc;
+            const { config, steps, height, run, animatedMeshes } = esc;
             const stepDelta = (config.speed * delta * config.direction) / config.length;
 
             steps.forEach(step => {
@@ -474,8 +494,13 @@ function buildEscalatorUniverse() {
                 step.mesh.position.set(0, step.progress * height, -step.progress * run);
             });
 
-            animatedTextures.forEach(tex => {
-                tex.offset.x -= stepDelta * (tex.repeat.x || 1);
+            animatedMeshes.forEach(item => {
+                if (item.travelSpan > 0.2) {
+                    const halfSpan = item.travelSpan / 2;
+                    item.mesh.position.x += config.speed * delta * config.direction;
+                    if (item.mesh.position.x > halfSpan) item.mesh.position.x = -halfSpan;
+                    if (item.mesh.position.x < -halfSpan) item.mesh.position.x = halfSpan;
+                }
             });
         });
 
