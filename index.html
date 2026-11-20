@@ -5,18 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Laberinto Brutalista 3D</title>
     <link rel="stylesheet" href="css/style.css">
-    <!-- Import Map para cargar Three.js y sus controles directamente -->
     <script type="importmap">
         {
             "imports": {
-                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+                "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
             }
         }
     </script>
 </head>
 <body>
-    <!-- Pantalla inicial para activar el control del mouse -->
     <div id="blocker">
         <div id="instructions">
             <h1>LABERINTO MECÁNICO</h1>
@@ -30,7 +28,6 @@
         </div>
     </div>
 
-    <!-- Mira central minimalista -->
     <div id="crosshair">+</div>
 
     <script type="module" src="js/scene.js"></script>
