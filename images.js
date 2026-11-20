@@ -15,8 +15,8 @@ export const glassGraphics = {
     1: {
         leftImage: "assets/imagen-01.png",
         rightImage: "assets/imagen-02.png",
-        moveWithBelt: true,
-        repeatX: 1
+        moveWithBelt: false, // false = queda fija cubriendo todo el vidrio de punta a punta
+        scale: 1             // 1 = ocupa el 100% del alto y largo del panel sin márgenes
     },
     2: {
         leftImage: "assets/imagen-02.png",
