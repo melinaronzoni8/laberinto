@@ -53,8 +53,8 @@
             </div>
             <div class="spec-box">
                 <span class="spec-num">02</span>
-                <strong>RECORRIDO WASD + MOUSE</strong>
-                <p>Caminá por el espacio, mirá en 360° y subite a los escalones para viajar entre pisos.</p>
+                <strong>RECORRIDO EN PRIMERA PERSONA</strong>
+                <p>Caminá por el espacio y subite a los escalones para viajar entre plataformas.</p>
             </div>
             <div class="spec-box">
                 <span class="spec-num">03</span>
@@ -71,27 +71,25 @@
         <!-- Acá se dibuja todo el mundo 3D -->
         <div id="universe-canvas"></div>
 
-        <!-- Cartel flotante superior cuando el cursor está libre -->
-        <div id="lock-banner">
-            <span>Hacé clic en cualquier parte de la escena para mover la vista con el mouse</span>
-            <button id="back-home-btn">← VOLVER A PORTADA</button>
-        </div>
+        <!-- Altura a la que estás -->
+        <div id="altitude-indicator" class="hud-pill">ALTURA: 0.0m</div>
 
-        <!-- HUD de navegación -->
-        <div id="hud">
-            <div id="crosshair"></div>
-            <div class="hud-top">
-                <div class="hud-pill" id="mode-indicator">MODO: CAMINATA FÍSICA (PISÁ LAS ESCALERAS)</div>
-                <div class="hud-pill" id="altitude-indicator">ALTURA: 0.0m</div>
+        <!-- Panel de filtros: qué capas del laberinto se ven -->
+        <nav id="filter-panel" aria-label="Filtros del laberinto">
+            <button id="back-home-btn" class="filter-back">← PORTADA</button>
+            <div class="filter-group">
+                <button class="filter-btn" data-layer="tipografia">TIPOGRAFÍA</button>
+                <button class="filter-btn" data-layer="vidrios">VIDRIOS</button>
+                <button class="filter-btn" data-layer="escaleras">ESCALERAS</button>
+                <button class="filter-btn" data-layer="columnas">COLUMNAS Y BASES</button>
+                <button class="filter-btn" data-layer="suelo">SUELO</button>
+                <button class="filter-btn" data-layer="niebla">NIEBLA</button>
             </div>
-            <div class="hud-bottom">
-                <span><b>W A S D</b>: Caminar</span>
-                <span><b>MOUSE</b>: Mirar 360°</span>
-                <span><b>ESPACIO</b>: Saltar</span>
-                <span><b>V</b>: Volar libremente</span>
-                <span><b>ESC</b>: Liberar mouse / Volver</span>
+            <div class="filter-group presets">
+                <button class="filter-preset" data-preset="solo-tipografia">SOLO TIPOGRAFÍA</button>
+                <button class="filter-preset" data-preset="todo">MOSTRAR TODO</button>
             </div>
-        </div>
+        </nav>
     </section>
 
     <script type="module" src="app.js"></script>

@@ -9,9 +9,7 @@ const homeSection = document.getElementById('home-section');
 const labyrinthSection = document.getElementById('labyrinth-section');
 const enterUniverseBtn = document.getElementById('enter-universe-btn');
 const backHomeBtn = document.getElementById('back-home-btn');
-const lockBanner = document.getElementById('lock-banner');
 const universeCanvas = document.getElementById('universe-canvas');
-const modeIndicator = document.getElementById('mode-indicator');
 const altitudeIndicator = document.getElementById('altitude-indicator');
 
 let isWorldBuilt = false;
@@ -38,9 +36,59 @@ universeCanvas.addEventListener('click', () => {
 });
 
 backHomeBtn.addEventListener('click', () => {
+    if (controls && controls.isLocked) controls.unlock();
     labyrinthSection.classList.remove('active');
     homeSection.classList.add('active');
 });
+
+// =========================================================
+// FILTROS: qué capas del mundo se ven
+// Cada botón del panel (data-layer) prende o apaga una capa.
+// =========================================================
+const layerState = {
+    tipografia: true,   // imágenes / tipografía de las barandas
+    vidrios: true,      // vidrios de las barandas
+    escaleras: true,    // estructura, escalones, pasamanos y resplandor
+    columnas: true,     // plataformas flotantes y columnas
+    suelo: true,        // piso y retícula
+    niebla: true        // niebla
+};
+const PRESETS = {
+    todo: { tipografia: true, vidrios: true, escaleras: true, columnas: true, suelo: true, niebla: true },
+    'solo-tipografia': { tipografia: true, vidrios: false, escaleras: false, columnas: false, suelo: false, niebla: true }
+};
+let applyLayers = () => {}; // se completa al construir el mundo
+
+const layerButtons = document.querySelectorAll('#filter-panel [data-layer]');
+const presetButtons = document.querySelectorAll('#filter-panel [data-preset]');
+
+function refreshFilterButtons() {
+    layerButtons.forEach(btn => {
+        const on = layerState[btn.dataset.layer];
+        btn.classList.toggle('on', on);
+        btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+}
+
+layerButtons.forEach(btn => {
+    btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        layerState[btn.dataset.layer] = !layerState[btn.dataset.layer];
+        refreshFilterButtons();
+        applyLayers();
+    });
+});
+
+presetButtons.forEach(btn => {
+    btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        Object.assign(layerState, PRESETS[btn.dataset.preset]);
+        refreshFilterButtons();
+        applyLayers();
+    });
+});
+
+refreshFilterButtons();
 
 // =========================================================
 // 2. CONSTRUCCIÓN DEL UNIVERSO 3D DE ESCALERAS MECÁNICAS
@@ -56,6 +104,24 @@ function buildEscalatorUniverse() {
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(FOG_COLOR);
     scene.fog = new THREE.FogExp2(FOG_COLOR, FOG_DENSITY);
+    const sceneFog = scene.fog;
+
+    // Registro de capas para los filtros
+    const layers = { tipografia: [], vidrios: [], escaleras: [], columnas: [], suelo: [] };
+    const typeTextures = []; // { mesh, dark, light }
+    function addToLayer(layer, obj) {
+        layers[layer].push(obj);
+        obj.visible = layerState[layer];
+        return obj;
+    }
+    applyLayers = () => {
+        Object.entries(layers).forEach(([layer, objs]) => {
+            objs.forEach(o => { o.visible = layerState[layer]; });
+        });
+        scene.fog = layerState.niebla ? sceneFog : null;
+        // Sin vidrio detrás, la tipografía pasa a clara para que se lea sobre lo oscuro
+        typeTextures.forEach(t => { t.mesh.material.map = layerState.vidrios ? t.dark : t.light; });
+    };
 
     const camera = new THREE.PerspectiveCamera(68, window.innerWidth / window.innerHeight, 0.1, 400);
     camera.position.set(0, EYE_HEIGHT, 11);
@@ -164,13 +230,13 @@ function buildEscalatorUniverse() {
     const floor = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), floorMat);
     floor.rotation.x = -Math.PI / 2;
     floor.receiveShadow = true;
-    scene.add(floor);
+    scene.add(addToLayer('suelo', floor));
 
     const grid = new THREE.GridHelper(300, 120, 0x7a1a1a, 0x2a1416);
     grid.position.y = 0.02;
     grid.material.opacity = 0.25;
     grid.material.transparent = true;
-    scene.add(grid);
+    scene.add(addToLayer('suelo', grid));
 
     // =====================================================
     // LABERINTO DE ESCALERAS
@@ -318,14 +384,14 @@ function buildEscalatorUniverse() {
         deck.position.y = -0.3;
         deck.castShadow = true;
         deck.receiveShadow = true;
-        padGroup.add(deck);
+        padGroup.add(addToLayer('columnas', deck));
 
         const ledMat = new THREE.MeshBasicMaterial({ color: NEONS[i % NEONS.length] });
         [[0, PAD_SIZE / 2, 0], [0, -PAD_SIZE / 2, 0], [PAD_SIZE / 2, 0, Math.PI / 2], [-PAD_SIZE / 2, 0, Math.PI / 2]].forEach(([ex, ez, er]) => {
             const edge = new THREE.Mesh(padEdgeGeo, ledMat);
             edge.position.set(ex, -0.02, ez);
             edge.rotation.y = er;
-            padGroup.add(edge);
+            padGroup.add(addToLayer('columnas', edge));
         });
 
         if (s.hasColumn) {
@@ -333,7 +399,7 @@ function buildEscalatorUniverse() {
             col.position.y = -0.6 - (s.y - 0.6) / 2;
             col.castShadow = true;
             col.receiveShadow = true;
-            padGroup.add(col);
+            padGroup.add(addToLayer('columnas', col));
         }
 
 
@@ -432,8 +498,20 @@ function buildEscalatorUniverse() {
         canvas.height = h;
         const drawW = Math.min(w, h * img.width / img.height);
         canvas.getContext('2d').drawImage(img, (w - drawW) / 2, 0, drawW, h);
-        tileCanvases.set(key, canvas);
-        return canvas;
+
+        // Versión clara (misma forma, color hueso) para cuando no hay vidrio
+        const light = document.createElement('canvas');
+        light.width = w;
+        light.height = h;
+        const lg = light.getContext('2d');
+        lg.drawImage(canvas, 0, 0);
+        lg.globalCompositeOperation = 'source-atop';
+        lg.fillStyle = '#efe4e1';
+        lg.fillRect(0, 0, w, h);
+
+        const pair = { dark: canvas, light };
+        tileCanvases.set(key, pair);
+        return pair;
     }
 
     function addGlassImage(railContainer, path, gfx, panelW, panelH, animatedMeshes) {
@@ -445,22 +523,27 @@ function buildEscalatorUniverse() {
             // Cada copia ocupa panelW / repeatX; el alto se ajusta para no estirar
             const tileW = panelW / repeatX;
             const imgH = Math.min(tileW / imgAspect, panelH * scale);
-            const canvas = getTileCanvas(img, path, tileW / imgH);
+            const canvases = getTileCanvas(img, path, tileW / imgH);
 
             // Dos caras: una mira hacia adentro y otra hacia afuera,
             // así el texto nunca se ve espejado.
             [1, -1].forEach(face => {
-                const tex = new THREE.CanvasTexture(canvas);
-                tex.colorSpace = THREE.SRGBColorSpace;
-                tex.wrapS = THREE.RepeatWrapping;
-                tex.wrapT = THREE.ClampToEdgeWrapping;
-                tex.repeat.x = repeatX;
-                tex.anisotropy = 4;
+                const makeTex = (cv) => {
+                    const t = new THREE.CanvasTexture(cv);
+                    t.colorSpace = THREE.SRGBColorSpace;
+                    t.wrapS = THREE.RepeatWrapping;
+                    t.wrapT = THREE.ClampToEdgeWrapping;
+                    t.repeat.x = repeatX;
+                    t.anisotropy = 4;
+                    return t;
+                };
+                const tex = makeTex(canvases.dark);
+                const texLight = makeTex(canvases.light);
 
                 const mesh = new THREE.Mesh(
                     new THREE.PlaneGeometry(panelW, imgH),
                     new THREE.MeshBasicMaterial({
-                        map: tex,
+                        map: layerState.vidrios ? tex : texLight,
                         transparent: true,
                         side: THREE.FrontSide,
                         depthWrite: false
@@ -468,10 +551,11 @@ function buildEscalatorUniverse() {
                 );
                 mesh.position.z = face * 0.018;
                 if (face === -1) mesh.rotation.y = Math.PI;
-                railContainer.add(mesh);
+                railContainer.add(addToLayer('tipografia', mesh));
+                typeTextures.push({ mesh, dark: tex, light: texLight });
 
                 if (gfx.moveWithBelt !== false) {
-                    animatedMeshes.push({ texture: tex, tileW, face });
+                    animatedMeshes.push({ textures: [tex, texLight], tileW, face });
                 }
             });
         }).catch(() => console.warn("Falta subir el archivo PNG:", path));
@@ -497,7 +581,7 @@ function buildEscalatorUniverse() {
         chassis.rotation.x = ANGLE;
         chassis.castShadow = true;
         chassis.receiveShadow = true;
-        group.add(chassis);
+        group.add(addToLayer('escaleras', chassis));
 
         // Resplandor leve que sale de abajo de la escalera
         const glowColor = GLOW_COLORS[cfg.id % GLOW_COLORS.length];
@@ -522,12 +606,12 @@ function buildEscalatorUniverse() {
         const bottomLanding = new THREE.Mesh(landingGeo, steelMat);
         bottomLanding.position.set(0, -0.375, landingLen / 2);
         bottomLanding.receiveShadow = true;
-        group.add(bottomLanding);
+        group.add(addToLayer('escaleras', bottomLanding));
 
         const topLanding = new THREE.Mesh(landingGeo, steelMat);
         topLanding.position.set(0, height - 0.375, -run - landingLen / 2);
         topLanding.receiveShadow = true;
-        group.add(topLanding);
+        group.add(addToLayer('escaleras', topLanding));
 
         // Escalones móviles
         const stepCount = Math.floor(cfg.length * 2.3);
@@ -538,7 +622,7 @@ function buildEscalatorUniverse() {
             const stepMesh = new THREE.Mesh(stepGeo, stepMat);
             stepMesh.castShadow = true;
             stepMesh.receiveShadow = true;
-            group.add(stepMesh);
+            group.add(addToLayer('escaleras', stepMesh));
             steps.push({ mesh: stepMesh, progress: i / stepCount });
         }
 
@@ -557,7 +641,7 @@ function buildEscalatorUniverse() {
             railContainer.rotation.z = ANGLE;
 
             // Vidrio templado
-            railContainer.add(new THREE.Mesh(new THREE.PlaneGeometry(cfg.length, railHeight), glassMat));
+            railContainer.add(addToLayer('vidrios', new THREE.Mesh(new THREE.PlaneGeometry(cfg.length, railHeight), glassMat)));
 
             // Pasamanos negro superior
             const handrail = new THREE.Mesh(
@@ -565,7 +649,7 @@ function buildEscalatorUniverse() {
                 darkMetalMat
             );
             handrail.position.set(0, railHeight / 2 + 0.04, 0);
-            railContainer.add(handrail);
+            railContainer.add(addToLayer('escaleras', handrail));
 
             // Tira LED neón en la base
             const ledStrip = new THREE.Mesh(
@@ -573,7 +657,7 @@ function buildEscalatorUniverse() {
                 new THREE.MeshBasicMaterial({ color: cfg.neon })
             );
             ledStrip.position.set(0, -railHeight / 2, 0);
-            railContainer.add(ledStrip);
+            railContainer.add(addToLayer('escaleras', ledStrip));
 
             const pngPath = isLeft ? gfx.leftImage : gfx.rightImage;
             if (pngPath) {
@@ -649,15 +733,8 @@ function buildEscalatorUniverse() {
     // Controles WASD + Mouse
     controls = new PointerLockControls(camera, document.body);
 
-    controls.addEventListener('lock', () => {
-        lockBanner.classList.add('hidden');
-    });
-
-    controls.addEventListener('unlock', () => {
-        if (labyrinthSection.classList.contains('active')) {
-            lockBanner.classList.remove('hidden');
-        }
-    });
+    controls.addEventListener('lock', () => labyrinthSection.classList.add('locked'));
+    controls.addEventListener('unlock', () => labyrinthSection.classList.remove('locked'));
 
     const keys = { f: false, b: false, l: false, r: false, jump: false, down: false };
     const velocity = new THREE.Vector3();
@@ -684,10 +761,6 @@ function buildEscalatorUniverse() {
         if (e.code === 'KeyV') {
             flyMode = !flyMode;
             velocity.y = 0;
-            modeIndicator.textContent = flyMode
-                ? "MODO: VUELO LIBRE (ESPACIO / SHIFT)"
-                : "MODO: CAMINATA FÍSICA (PISÁ LAS ESCALERAS)";
-            modeIndicator.style.color = flyMode ? "#e8ecff" : "#ff4a3d";
         }
     });
 
@@ -730,8 +803,9 @@ function buildEscalatorUniverse() {
             // Deslizamiento continuo de las imágenes junto con la cinta
             const beltShift = config.speed * delta * config.direction;
             animatedMeshes.forEach(item => {
-                const off = item.texture.offset.x - item.face * beltShift / item.tileW;
-                item.texture.offset.x = ((off % 1) + 1) % 1;
+                const off = item.textures[0].offset.x - item.face * beltShift / item.tileW;
+                const wrapped = ((off % 1) + 1) % 1;
+                item.textures.forEach(t => { t.offset.x = wrapped; });
             });
         });
 
@@ -781,6 +855,7 @@ function buildEscalatorUniverse() {
                 canJump = true;
             }
         }
+
 
         altitudeIndicator.textContent = `ALTURA: ${Math.max(0, camera.position.y - EYE_HEIGHT).toFixed(1)}m`;
 
