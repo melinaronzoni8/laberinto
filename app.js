@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
-import { glassGraphics } from './images.js';
+import { getGlassConfig } from './images.js';
 
 // =========================================================
 // 1. NAVEGACIÓN ENTRE SECCIÓN 1 (PORTADA) Y SECCIÓN 2 (3D)
@@ -49,12 +49,15 @@ function buildEscalatorUniverse() {
     const EYE_HEIGHT = 1.75;
     const ANGLE = Math.PI / 6; // Inclinación 30 grados
 
-    // Escena y atmósfera monumental
+    // Escena y atmósfera: noche lúgubre con niebla rojiza
+    // Lo cercano se ve y lo lejano se va hundiendo de a poco en la bruma.
+    const FOG_COLOR = 0x1c0b0e;
+    const FOG_DENSITY = 0.032; // más alto = más niebla
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x06070b);
-    scene.fog = new THREE.FogExp2(0x06070b, 0.011);
+    scene.background = new THREE.Color(FOG_COLOR);
+    scene.fog = new THREE.FogExp2(FOG_COLOR, FOG_DENSITY);
 
-    const camera = new THREE.PerspectiveCamera(68, window.innerWidth / window.innerHeight, 0.1, 320);
+    const camera = new THREE.PerspectiveCamera(68, window.innerWidth / window.innerHeight, 0.1, 400);
     camera.position.set(0, EYE_HEIGHT, 11);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
@@ -63,159 +66,417 @@ function buildEscalatorUniverse() {
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.25;
+    renderer.toneMappingExposure = 1.0;
     universeCanvas.appendChild(renderer.domElement);
 
-    // Iluminación arquitectónica de alto contraste + neón
-    scene.add(new THREE.AmbientLight(0xdce6f2, 0.75));
+    // Luz de luna roja, muy tenue
+    scene.add(new THREE.HemisphereLight(0x7a3038, 0x1a0c0e, 1.3));
 
-    const sunLight = new THREE.DirectionalLight(0xffffff, 2.4);
-    sunLight.position.set(22, 70, 28);
+    const sunLight = new THREE.DirectionalLight(0xc0392b, 0.7);
+    sunLight.position.set(-40, 80, -90);
+    sunLight.target.position.set(0, 0, -45);
+    scene.add(sunLight.target);
     sunLight.castShadow = true;
     sunLight.shadow.mapSize.width = 2048;
     sunLight.shadow.mapSize.height = 2048;
-    const d = 65;
+    sunLight.shadow.radius = 6;
+    const d = 75;
     sunLight.shadow.camera.left = -d;
     sunLight.shadow.camera.right = d;
     sunLight.shadow.camera.top = d;
     sunLight.shadow.camera.bottom = -d;
     scene.add(sunLight);
 
-    const cyanGlow = new THREE.PointLight(0x05d9e8, 55, 65);
-    cyanGlow.position.set(-16, 15, -18);
-    scene.add(cyanGlow);
+    // Textura radial para halos de luz (faroles y luna)
+    function makeGlowTexture(inner, outer) {
+        const c = document.createElement('canvas');
+        c.width = c.height = 128;
+        const g = c.getContext('2d');
+        const grad = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+        grad.addColorStop(0, inner);
+        grad.addColorStop(0.25, outer);
+        grad.addColorStop(1, 'rgba(0,0,0,0)');
+        g.fillStyle = grad;
+        g.fillRect(0, 0, 128, 128);
+        const tex = new THREE.CanvasTexture(c);
+        tex.colorSpace = THREE.SRGBColorSpace;
+        return tex;
+    }
 
-    const pinkGlow = new THREE.PointLight(0xff2a6d, 55, 65);
-    pinkGlow.position.set(16, 22, -30);
-    scene.add(pinkGlow);
 
-    const topCyanGlow = new THREE.PointLight(0x05d9e8, 50, 70);
-    topCyanGlow.position.set(0, 34, -36);
-    scene.add(topCyanGlow);
+    // Textura de hormigón gastado con manchas de humedad (generada, sin archivos)
+    function makeConcreteTexture(repeat) {
+        const size = 512;
+        const c = document.createElement('canvas');
+        c.width = c.height = size;
+        const g = c.getContext('2d');
+        g.fillStyle = '#6b6767';
+        g.fillRect(0, 0, size, size);
+        const r = mulberryTex(11);
+        for (let i = 0; i < 260; i++) {
+            const x = r() * size, y = r() * size, rad = 6 + r() * 60;
+            const tone = r() < 0.35 ? '70,60,58' : (r() < 0.5 ? '30,26,27' : '120,112,110');
+            const grad = g.createRadialGradient(x, y, 0, x, y, rad);
+            grad.addColorStop(0, `rgba(${tone},${0.1 + r() * 0.2})`);
+            grad.addColorStop(1, `rgba(${tone},0)`);
+            g.fillStyle = grad;
+            g.fillRect(x - rad, y - rad, rad * 2, rad * 2);
+        }
+        // Chorreados verticales
+        for (let i = 0; i < 40; i++) {
+            const x = r() * size, w = 2 + r() * 8, h = 40 + r() * 200;
+            g.fillStyle = `rgba(20,16,16,${0.08 + r() * 0.14})`;
+            g.fillRect(x, r() * size, w, h);
+        }
+        const tex = new THREE.CanvasTexture(c);
+        tex.colorSpace = THREE.SRGBColorSpace;
+        tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+        tex.repeat.set(repeat, repeat);
+        return tex;
+    }
+    function mulberryTex(a) {
+        return function () {
+            a |= 0; a = a + 0x6D2B79F5 | 0;
+            let t = Math.imul(a ^ a >>> 15, 1 | a);
+            t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+            return ((t ^ t >>> 14) >>> 0) / 4294967296;
+        };
+    }
 
-    // Materiales brutalistas y cromados
-    const concreteMat = new THREE.MeshStandardMaterial({ color: 0x22252d, roughness: 0.85, metalness: 0.15 });
-    const steelMat = new THREE.MeshStandardMaterial({ color: 0x929ca8, roughness: 0.25, metalness: 0.88 });
-    const darkMetalMat = new THREE.MeshStandardMaterial({ color: 0x101216, roughness: 0.4, metalness: 0.85 });
-    const stepMat = new THREE.MeshStandardMaterial({ color: 0x2f353e, roughness: 0.3, metalness: 0.9 });
-    const glassMat = new THREE.MeshPhysicalMaterial({
-        color: 0xbbe2f0,
+    // Materiales: hormigón oscuro y húmedo, metal negro
+    const concreteMat = new THREE.MeshStandardMaterial({ color: 0xffffff, map: makeConcreteTexture(1), roughness: 0.9, metalness: 0.0 });
+    const steelMat = new THREE.MeshStandardMaterial({ color: 0x4a4446, roughness: 0.5, metalness: 0.6 });
+    const darkMetalMat = new THREE.MeshStandardMaterial({ color: 0x0e0b0c, roughness: 0.5, metalness: 0.7 });
+    const stepMat = new THREE.MeshStandardMaterial({ color: 0x2a2627, roughness: 0.45, metalness: 0.7 });
+
+    // Vidrio de las barandas: caja de luz pálida para que las imágenes
+    // se lean bien aunque todo alrededor esté oscuro.
+    const glassMat = new THREE.MeshBasicMaterial({
+        color: 0xd8c9c6,
         transparent: true,
-        opacity: 0.26,
-        roughness: 0.08,
-        metalness: 0.1,
+        opacity: 0.5,
         side: THREE.DoubleSide,
         depthWrite: false
     });
 
-    // Suelo con retícula luminosa
-    const floor = new THREE.Mesh(new THREE.PlaneGeometry(360, 360), concreteMat);
+    // Suelo de asfalto mojado con una retícula apenas visible
+    const floorMat = new THREE.MeshStandardMaterial({ color: 0x9a8a8c, map: makeConcreteTexture(40), roughness: 0.6, metalness: 0.0 });
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), floorMat);
     floor.rotation.x = -Math.PI / 2;
     floor.receiveShadow = true;
     scene.add(floor);
 
-    const grid = new THREE.GridHelper(300, 120, 0x05d9e8, 0x1a1e26);
+    const grid = new THREE.GridHelper(300, 120, 0x7a1a1a, 0x2a1416);
     grid.position.y = 0.02;
-    grid.material.opacity = 0.35;
+    grid.material.opacity = 0.25;
     grid.material.transparent = true;
     scene.add(grid);
 
-    // Columnas gigantes y pasarelas aéreas en 5 niveles
+    // =====================================================
+    // LABERINTO DE ESCALERAS
+    // Las escaleras se generan encadenadas: cada una sale de una plataforma
+    // y termina en otra plataforma flotante, desde donde salen nuevas
+    // escaleras en otras direcciones y a otras alturas.
+    // El laberinto es siempre el mismo; cambiá MAZE_SEED para generar otro.
+    // =====================================================
+    const MAZE_SEED = 7;
+    const ESCALATOR_COUNT = 50;
+    const MAX_HEIGHT = 55;
+    const PAD_SIZE = 5;
+    const NEONS = [0xff2a2a, 0x8a0f1a, 0xd8d2cc];
+    const GLOW_COLORS = [0xff2a2a, 0xb01020, 0xe8ecff];
+
     const walkablePlatforms = [];
-    const pillarGeo = new THREE.BoxGeometry(2.5, 95, 2.5);
+    const escalatorDefs = [];
 
-    [
-        [-20, -2], [20, -2],
-        [-20, -20], [20, -20],
-        [-20, -38], [20, -38],
-        [-20, -56], [20, -56],
-        [-34, -12], [34, -12],
-        [-34, -32], [34, -32],
-        [-34, -52], [34, -52]
-    ].forEach(([x, z]) => {
-        const pillar = new THREE.Mesh(pillarGeo, concreteMat);
-        pillar.position.set(x, 47.5, z);
-        pillar.castShadow = true;
-        pillar.receiveShadow = true;
-        scene.add(pillar);
-    });
+    function mulberry32(a) {
+        return function () {
+            a |= 0; a = a + 0x6D2B79F5 | 0;
+            let t = Math.imul(a ^ a >>> 15, 1 | a);
+            t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+            return ((t ^ t >>> 14) >>> 0) / 4294967296;
+        };
+    }
+    const rand = mulberry32(MAZE_SEED);
+    const rr = (a, b) => a + rand() * (b - a);
+    const angleDiff = (a, b) => Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)));
 
-    // 5 pisos de balcones y puentes que conectan el laberinto
-    for (let lvl = 1; lvl <= 5; lvl++) {
-        const y = lvl * 7;
+    // Puntos ocupados por escaleras, plataformas y columnas (para que no se choquen)
+    const obstacles = [];
 
-        [-26, 26].forEach(x => {
-            const deck = new THREE.Mesh(new THREE.BoxGeometry(8, 0.7, 88), concreteMat);
-            deck.position.set(x, y - 0.35, -28);
-            deck.receiveShadow = true;
-            scene.add(deck);
+    function isFree(points, ignoreOwner) {
+        for (const p of points) {
+            if (Math.abs(p.x) > 55 || p.z > 4 || p.z < -100) return false;
+            for (const o of obstacles) {
+                if (o.owner === ignoreOwner) continue;
+                const d = Math.hypot(p.x - o.x, p.z - o.z);
+                if (d >= p.r + o.r + 0.4) continue;
+                if (o.column ? p.y < o.top + 3.8 : Math.abs(p.y - o.y) < 3.8) return false;
+            }
+        }
+        return true;
+    }
 
-            walkablePlatforms.push({ minX: x - 4, maxX: x + 4, minZ: -72, maxZ: 16, y });
+    function escalatorPoints(sx, sy, sz, heading, length, width) {
+        const fx = -Math.sin(heading), fz = -Math.cos(heading);
+        const run = Math.cos(ANGLE) * length;
+        const h = Math.sin(ANGLE) * length;
+        const pts = [];
+        // Los primeros metros quedan sobre la plataforma de salida: no se controlan
+        for (let s = 1.4; s <= run + 2.6; s += 1) {
+            const t = Math.min(Math.max(s, 0), run) / run;
+            pts.push({ x: sx + fx * s, z: sz + fz * s, y: sy + t * h, r: width / 2 + 0.35 });
+        }
+        return { pts, fx, fz, run, h };
+    }
 
-            const led = new THREE.Mesh(
-                new THREE.BoxGeometry(0.14, 0.14, 88),
-                new THREE.MeshBasicMaterial({ color: lvl % 2 === 0 ? 0x05d9e8 : 0xff2a6d })
-            );
-            led.position.set(x > 0 ? x - 4 : x + 4, y, -28);
-            scene.add(led);
+    function padPoints(cx, cy, cz, rot) {
+        const pts = [];
+        const c = Math.cos(rot), s = Math.sin(rot);
+        for (const i of [-1.6, 0, 1.6]) {
+            for (const j of [-1.6, 0, 1.6]) {
+                pts.push({ x: cx + i * c + j * s, z: cz - i * s + j * c, y: cy, r: 1.0 });
+            }
+        }
+        return pts;
+    }
+
+    // Puntos de partida en el suelo (la primera queda justo frente a la entrada)
+    const spots = [{ x: 0, y: 0, z: -2, heading: 0, owner: -1, children: 0, maxChildren: 3, used: [], ground: true }];
+    for (let i = 0; i < 7; i++) {
+        spots.push({ x: rr(-40, 40), y: 0, z: rr(-85, -12), heading: rr(-Math.PI, Math.PI), owner: -1, children: 0, maxChildren: 3, used: [], ground: true });
+    }
+
+    let tries = 0;
+    while (escalatorDefs.length < ESCALATOR_COUNT && tries++ < 6000) {
+        const open = spots.filter(s => s.children < s.maxChildren);
+        if (!open.length) break;
+
+        const first = escalatorDefs.length === 0;
+        // Se prefieren las plataformas altas para que el laberinto crezca hacia arriba
+        const spot = first ? spots[0] : open[Math.floor(Math.pow(rand(), 0.7) * open.length)];
+
+        const heading = first ? 0 : spot.heading + (spot.ground ? rr(-Math.PI, Math.PI) : (rand() < 0.5 ? -1 : 1) * rr(Math.PI / 5, Math.PI * 0.8));
+        if (spot.used.some(u => angleDiff(u, heading) < Math.PI / 2.2)) continue;
+
+        const length = first ? 14 : rr(8, 18);
+        const width = first ? 2.5 : rr(2.2, 3.0);
+        const sx = spot.ground ? spot.x : spot.x - Math.sin(heading) * 1.2;
+        const sz = spot.ground ? spot.z : spot.z - Math.cos(heading) * 1.2;
+        const sy = spot.y;
+
+        const esc = escalatorPoints(sx, sy, sz, heading, length, width);
+        const topY = sy + esc.h;
+        if (topY > MAX_HEIGHT) continue;
+
+        const padDist = esc.run + 2.6 + PAD_SIZE / 2 - 0.5;
+        const px = sx + esc.fx * padDist;
+        const pz = sz + esc.fz * padDist;
+        const pad = padPoints(px, topY, pz, heading);
+
+        if (!first && !isFree([...esc.pts, ...pad], spot.owner)) continue;
+
+        const id = escalatorDefs.length + 1;
+        escalatorDefs.push({
+            id, x: sx, y: sy, z: sz, rotY: heading,
+            length, width,
+            direction: rand() < 0.5 ? 1 : -1,
+            speed: rr(1.3, 2.2),
+            neon: NEONS[id % NEONS.length]
         });
+        esc.pts.forEach(p => obstacles.push({ ...p, owner: id }));
+        pad.forEach(p => obstacles.push({ ...p, owner: id }));
 
-        [-14, -30, -46].forEach(zBridge => {
-            const bridge = new THREE.Mesh(new THREE.BoxGeometry(44, 0.65, 4.5), steelMat);
-            bridge.position.set(0, y - 0.325, zBridge);
-            bridge.receiveShadow = true;
-            scene.add(bridge);
+        spot.children++;
+        spot.used.push(heading);
 
-            walkablePlatforms.push({
-                minX: -22, maxX: 22,
-                minZ: zBridge - 2.25, maxZ: zBridge + 2.25,
-                y
-            });
+        // Columna de apoyo bajo la plataforma, sólo si no atraviesa otra escalera
+        const colPoint = { x: px, z: pz, y: 0, r: 0.6 };
+        let colFree = true;
+        for (const o of obstacles) {
+            if (o.owner === id || o.column) continue;
+            if (Math.hypot(o.x - px, o.z - pz) < o.r + 1.0 && o.y < topY - 0.5) { colFree = false; break; }
+        }
+        if (colFree) obstacles.push({ ...colPoint, column: true, top: topY, owner: id });
+
+        spots.push({
+            x: px, y: topY, z: pz, heading, owner: id, children: 0,
+            maxChildren: 2, used: [heading + Math.PI], ground: false,
+            hasColumn: colFree
         });
     }
 
-    // 24 escaleras mecánicas de todo tipo: de frente, cruzadas, laterales, invertidas y lejanas
-    const escalatorDefs = [
-        // Nivel 0 -> 1 (De frente al entrar: una sube, una baja)
-        { id: 1,  x: -3.6, y: 0,  z: 0,   rotY: 0,            length: 14, width: 2.5, direction: 1,  speed: 1.8, neon: 0x05d9e8 },
-        { id: 2,  x: 3.6,  y: 0,  z: 0,   rotY: 0,            length: 14, width: 2.5, direction: -1, speed: 2.1, neon: 0xff2a6d },
+    // Plataformas flotantes con borde de neón
+    const padGeo = new THREE.BoxGeometry(PAD_SIZE, 0.6, PAD_SIZE);
+    const padEdgeGeo = new THREE.BoxGeometry(PAD_SIZE, 0.1, 0.1);
+    spots.filter(s => !s.ground).forEach((s, i) => {
+        const padGroup = new THREE.Group();
+        padGroup.position.set(s.x, s.y, s.z);
+        padGroup.rotation.y = s.heading;
 
-        // Nivel 1 -> 2 (Continuación central cruzada)
-        { id: 3,  x: -3.6, y: 7,  z: -16, rotY: 0,            length: 14, width: 2.5, direction: 1,  speed: 1.7, neon: 0xff2a6d },
-        { id: 4,  x: 3.6,  y: 7,  z: -16, rotY: 0,            length: 14, width: 2.5, direction: -1, speed: 2.2, neon: 0x05d9e8 },
+        const deck = new THREE.Mesh(padGeo, i % 3 === 0 ? steelMat : concreteMat);
+        deck.position.y = -0.3;
+        deck.castShadow = true;
+        deck.receiveShadow = true;
+        padGroup.add(deck);
 
-        // Laterales de perfil (Nivel 0 y Nivel 1)
-        { id: 5,  x: -9.5, y: 0,  z: -14, rotY: Math.PI / 2,  length: 14, width: 2.4, direction: 1,  speed: 1.6, neon: 0xffffff },
-        { id: 6,  x: 9.5,  y: 0,  z: -14, rotY: -Math.PI / 2, length: 14, width: 2.4, direction: -1, speed: 1.9, neon: 0x05d9e8 },
-        { id: 7,  x: -9.5, y: 7,  z: -30, rotY: Math.PI / 2,  length: 14, width: 2.4, direction: 1,  speed: 1.5, neon: 0xff2a6d },
-        { id: 8,  x: 9.5,  y: 7,  z: -30, rotY: -Math.PI / 2, length: 14, width: 2.4, direction: -1, speed: 2.0, neon: 0xffffff },
+        const ledMat = new THREE.MeshBasicMaterial({ color: NEONS[i % NEONS.length] });
+        [[0, PAD_SIZE / 2, 0], [0, -PAD_SIZE / 2, 0], [PAD_SIZE / 2, 0, Math.PI / 2], [-PAD_SIZE / 2, 0, Math.PI / 2]].forEach(([ex, ez, er]) => {
+            const edge = new THREE.Mesh(padEdgeGeo, ledMat);
+            edge.position.set(ex, -0.02, ez);
+            edge.rotation.y = er;
+            padGroup.add(edge);
+        });
 
-        // Nivel 2 -> 3 (Invertidas mirándote de frente desde las alturas)
-        { id: 9,  x: -4.2, y: 14, z: -28, rotY: Math.PI,      length: 14, width: 2.6, direction: 1,  speed: 1.6, neon: 0x05d9e8 },
-        { id: 10, x: 4.2,  y: 14, z: -28, rotY: Math.PI,      length: 14, width: 2.6, direction: -1, speed: 2.1, neon: 0xff2a6d },
+        if (s.hasColumn) {
+            const col = new THREE.Mesh(new THREE.BoxGeometry(1.1, s.y - 0.6, 1.1), concreteMat);
+            col.position.y = -0.6 - (s.y - 0.6) / 2;
+            col.castShadow = true;
+            col.receiveShadow = true;
+            padGroup.add(col);
+        }
 
-        // Nivel 3 -> 4 (Tramo monumental central y diagonales)
-        { id: 11, x: 0,    y: 21, z: -16, rotY: 0,            length: 14, width: 3.0, direction: 1,  speed: 1.4, neon: 0xffffff },
-        { id: 12, x: -8,   y: 21, z: -32, rotY: Math.PI / 4,  length: 14, width: 2.3, direction: -1, speed: 1.7, neon: 0x05d9e8 },
-        { id: 13, x: 8,    y: 21, z: -32, rotY: -Math.PI / 4, length: 14, width: 2.3, direction: 1,  speed: 1.5, neon: 0xff2a6d },
 
-        // Nivel 4 -> 5 (Cúpula superior)
-        { id: 14, x: -4,   y: 28, z: -32, rotY: 0,            length: 14, width: 2.8, direction: -1, speed: 1.6, neon: 0x05d9e8 },
-        { id: 15, x: 4,    y: 28, z: -32, rotY: 0,            length: 14, width: 2.8, direction: 1,  speed: 1.8, neon: 0xff2a6d },
+        scene.add(padGroup);
+        walkablePlatforms.push({ x: s.x, z: s.z, y: s.y, rot: s.heading, half: PAD_SIZE / 2 });
+    });
 
-        // Estructuras profundas y laterales lejanas para perspectiva infinita
-        { id: 16, x: -15,  y: 14, z: -42, rotY: -Math.PI / 3, length: 16, width: 2.3, direction: 1,  speed: 1.9, neon: 0xffffff },
-        { id: 17, x: 15,   y: 14, z: -42, rotY: Math.PI / 3,  length: 16, width: 2.3, direction: -1, speed: 1.5, neon: 0xff2a6d },
-        { id: 18, x: -16,  y: 0,  z: -34, rotY: 0,            length: 14, width: 2.2, direction: 1,  speed: 2.0, neon: 0x05d9e8 },
-        { id: 19, x: 16,   y: 0,  z: -34, rotY: 0,            length: 14, width: 2.2, direction: -1, speed: 1.4, neon: 0xff2a6d },
-        { id: 20, x: -16,  y: 7,  z: -48, rotY: 0,            length: 14, width: 2.2, direction: -1, speed: 1.7, neon: 0xffffff },
-        { id: 21, x: 16,   y: 7,  z: -48, rotY: 0,            length: 14, width: 2.2, direction: 1,  speed: 1.6, neon: 0x05d9e8 },
-        { id: 22, x: -5,   y: 14, z: -48, rotY: Math.PI,      length: 14, width: 2.5, direction: 1,  speed: 2.1, neon: 0xff2a6d },
-        { id: 23, x: 5,    y: 14, z: -48, rotY: Math.PI,      length: 14, width: 2.5, direction: -1, speed: 1.3, neon: 0x05d9e8 },
-        { id: 24, x: 0,    y: 28, z: -48, rotY: Math.PI,      length: 16, width: 3.2, direction: 1,  speed: 1.5, neon: 0xffffff }
-    ];
+    // ---------------------------------------------------------
+    // Luces flotando en el espacio: puntos de luz sin farol,
+    // suspendidos en la niebla, que se mecen muy despacio.
+    // ---------------------------------------------------------
+    const redGlow = makeGlowTexture('rgba(255,90,80,1)', 'rgba(255,30,30,0.35)');
+    const whiteGlow = makeGlowTexture('rgba(255,255,255,1)', 'rgba(220,228,255,0.3)');
+    const FLOATING_LIGHTS = 0; // desactivadas (poné un número, ej. 45, para volver a mostrarlas)
+    const floatingLights = [];
+    const lightRand = mulberryTex(21);
+    for (let i = 0; i < FLOATING_LIGHTS; i++) {
+        const isWhite = lightRand() < 0.3;
+        const sprite = new THREE.Sprite(new THREE.SpriteMaterial({
+            map: isWhite ? whiteGlow : redGlow,
+            transparent: true, depthWrite: false,
+            blending: THREE.AdditiveBlending,
+            opacity: 0.35 + lightRand() * 0.45
+        }));
+        const size = 1.5 + lightRand() * 4.5;
+        sprite.scale.set(size, size, 1);
+        const base = new THREE.Vector3(
+            -50 + lightRand() * 100,
+            2 + lightRand() * 42,
+            -95 + lightRand() * 95
+        );
+        sprite.position.copy(base);
+        scene.add(sprite);
 
-    const textureLoader = new THREE.TextureLoader();
+        let light = null;
+        if (i % 5 === 0) {
+            light = new THREE.PointLight(isWhite ? 0xe8ecff : 0xff2a2a, 16, 18, 1.6);
+            light.position.copy(base);
+            scene.add(light);
+        }
+        floatingLights.push({
+            sprite, light, base,
+            baseOpacity: sprite.material.opacity,
+            phase: lightRand() * Math.PI * 2,
+            speed: 0.15 + lightRand() * 0.35,
+            amp: 0.4 + lightRand() * 1.4
+        });
+    }
+
+    // Franja de luz suave (más intensa en el centro) para abajo de las escaleras
+    const stripGlow = (() => {
+        const c = document.createElement('canvas');
+        c.width = 64; c.height = 4;
+        const g = c.getContext('2d');
+        const grad = g.createLinearGradient(0, 0, 64, 0);
+        grad.addColorStop(0, 'rgba(255,255,255,0)');
+        grad.addColorStop(0.5, 'rgba(255,255,255,1)');
+        grad.addColorStop(1, 'rgba(255,255,255,0)');
+        g.fillStyle = grad; g.fillRect(0, 0, 64, 4);
+        const t = new THREE.CanvasTexture(c);
+        t.colorSpace = THREE.SRGBColorSpace;
+        return t;
+    })();
+
+    // ---------------------------------------------------------
+    // Imágenes PNG sobre el vidrio
+    // La imagen se arma como un "azulejo" que se repite repeatX veces
+    // a lo largo del vidrio. Para deslizarla se mueve la textura, así
+    // el recorrido es continuo y nunca salta de punta a punta.
+    // ---------------------------------------------------------
+    const imagePromises = new Map();
+    const tileCanvases = new Map();
+
+    function loadImage(path) {
+        if (!imagePromises.has(path)) {
+            imagePromises.set(path, new Promise((resolve, reject) => {
+                new THREE.ImageLoader().load(path, resolve, undefined, reject);
+            }));
+        }
+        return imagePromises.get(path);
+    }
+
+    // Lienzo con la imagen centrada y espacio transparente a los costados
+    function getTileCanvas(img, path, tileAspect) {
+        const key = `${path}|${tileAspect.toFixed(3)}`;
+        if (tileCanvases.has(key)) return tileCanvases.get(key);
+
+        let h = Math.min(img.height, 512);
+        let w = Math.round(h * tileAspect);
+        if (w > 4096) {
+            h = Math.round(h * 4096 / w);
+            w = 4096;
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const drawW = Math.min(w, h * img.width / img.height);
+        canvas.getContext('2d').drawImage(img, (w - drawW) / 2, 0, drawW, h);
+        tileCanvases.set(key, canvas);
+        return canvas;
+    }
+
+    function addGlassImage(railContainer, path, gfx, panelW, panelH, animatedMeshes) {
+        loadImage(path).then(img => {
+            const imgAspect = img.width / img.height;
+            const repeatX = Math.max(1, Math.round(gfx.repeatX || 1));
+            const scale = Math.min(Math.max(gfx.scale ?? 0.85, 0.05), 1);
+
+            // Cada copia ocupa panelW / repeatX; el alto se ajusta para no estirar
+            const tileW = panelW / repeatX;
+            const imgH = Math.min(tileW / imgAspect, panelH * scale);
+            const canvas = getTileCanvas(img, path, tileW / imgH);
+
+            // Dos caras: una mira hacia adentro y otra hacia afuera,
+            // así el texto nunca se ve espejado.
+            [1, -1].forEach(face => {
+                const tex = new THREE.CanvasTexture(canvas);
+                tex.colorSpace = THREE.SRGBColorSpace;
+                tex.wrapS = THREE.RepeatWrapping;
+                tex.wrapT = THREE.ClampToEdgeWrapping;
+                tex.repeat.x = repeatX;
+                tex.anisotropy = 4;
+
+                const mesh = new THREE.Mesh(
+                    new THREE.PlaneGeometry(panelW, imgH),
+                    new THREE.MeshBasicMaterial({
+                        map: tex,
+                        transparent: true,
+                        side: THREE.FrontSide,
+                        depthWrite: false
+                    })
+                );
+                mesh.position.z = face * 0.018;
+                if (face === -1) mesh.rotation.y = Math.PI;
+                railContainer.add(mesh);
+
+                if (gfx.moveWithBelt !== false) {
+                    animatedMeshes.push({ texture: tex, tileW, face });
+                }
+            });
+        }).catch(() => console.warn("Falta subir el archivo PNG:", path));
+    }
+
     const escalators = [];
 
     escalatorDefs.forEach(cfg => {
@@ -230,13 +491,31 @@ function buildEscalatorUniverse() {
         // Chasis metálico inferior
         const chassis = new THREE.Mesh(
             new THREE.BoxGeometry(cfg.width + 0.45, 0.75, cfg.length),
-            darkMetalMat
+            concreteMat
         );
         chassis.position.set(0, height / 2 - 0.35, -run / 2);
         chassis.rotation.x = ANGLE;
         chassis.castShadow = true;
         chassis.receiveShadow = true;
         group.add(chassis);
+
+        // Resplandor leve que sale de abajo de la escalera
+        const glowColor = GLOW_COLORS[cfg.id % GLOW_COLORS.length];
+        const underGlow = new THREE.Mesh(
+            new THREE.PlaneGeometry(cfg.width + 0.2, cfg.length * 0.96),
+            new THREE.MeshBasicMaterial({
+                map: stripGlow, color: glowColor, transparent: true, opacity: 0.35,
+                depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide
+            })
+        );
+        underGlow.rotation.x = Math.PI / 2;
+        underGlow.position.y = -0.4;
+        chassis.add(underGlow);
+        if (cfg.id % 5 === 0) {
+            const leak = new THREE.PointLight(glowColor, 10, 14, 1.6);
+            leak.position.set(0, height / 2 - 2, -run / 2);
+            group.add(leak);
+        }
 
         // Plataformas inferior y superior
         const landingGeo = new THREE.BoxGeometry(cfg.width + 0.45, 0.75, landingLen);
@@ -263,10 +542,10 @@ function buildEscalatorUniverse() {
             steps.push({ mesh: stepMesh, progress: i / stepCount });
         }
 
-        // Barandas de vidrio + Imágenes PNG centradas sin estirarse
+        // Barandas de vidrio + imágenes PNG (sin estirarse, se leen bien de ambos lados)
         const railHeight = 1.1;
         const animatedMeshes = [];
-        const gfx = glassGraphics[cfg.id];
+        const gfx = getGlassConfig(cfg.id);
 
         [-1, 1].forEach(sideSign => {
             const isLeft = sideSign === -1;
@@ -296,58 +575,9 @@ function buildEscalatorUniverse() {
             ledStrip.position.set(0, -railHeight / 2, 0);
             railContainer.add(ledStrip);
 
-            // Imagen PNG centrada exacta sin estirarse ni repetirse
-            const pngPath = gfx ? (isLeft ? gfx.leftImage : gfx.rightImage) : null;
+            const pngPath = isLeft ? gfx.leftImage : gfx.rightImage;
             if (pngPath) {
-                const maxPanelW = cfg.length * 0.94;
-                const maxPanelH = railHeight * 0.86;
-
-                textureLoader.load(
-                    pngPath,
-                    (tex) => {
-                        tex.colorSpace = THREE.SRGBColorSpace;
-                        tex.wrapS = THREE.ClampToEdgeWrapping;
-                        tex.wrapT = THREE.ClampToEdgeWrapping;
-
-                        const imgAspect = tex.image.width / tex.image.height;
-                        const scale = gfx.scale || 0.85;
-
-                        // Calcula el ancho y alto reales manteniendo la proporción exacta del PNG
-                        let meshH = maxPanelH * scale;
-                        let meshW = meshH * imgAspect;
-
-                        // Si el PNG es muy ancho y supera el largo de la escalera, lo ajusta proporcionalmente
-                        if (meshW > maxPanelW * scale) {
-                            meshW = maxPanelW * scale;
-                            meshH = meshW / imgAspect;
-                        }
-
-                        const decalMat = new THREE.MeshBasicMaterial({
-                            map: tex,
-                            transparent: true,
-                            side: THREE.DoubleSide,
-                            depthWrite: false
-                        });
-
-                        const decalMesh = new THREE.Mesh(
-                            new THREE.PlaneGeometry(meshW, meshH),
-                            decalMat
-                        );
-
-                        // Centrado en el medio exacto del vidrio (0, 0)
-                        decalMesh.position.set(0, 0, sideSign * 0.018);
-                        railContainer.add(decalMesh);
-
-                        if (gfx.moveWithBelt !== false) {
-                            animatedMeshes.push({
-                                mesh: decalMesh,
-                                travelSpan: maxPanelW - meshW
-                            });
-                        }
-                    },
-                    undefined,
-                    () => console.warn("Falta subir el archivo PNG:", pngPath)
-                );
+                addGlassImage(railContainer, pngPath, gfx, cfg.length, railHeight, animatedMeshes);
             }
 
             group.add(railContainer);
@@ -367,8 +597,11 @@ function buildEscalatorUniverse() {
         const transport = new THREE.Vector3(0, 0, 0);
 
         for (const p of walkablePlatforms) {
-            if (playerPos.x >= p.minX && playerPos.x <= p.maxX &&
-                playerPos.z >= p.minZ && playerPos.z <= p.maxZ) {
+            // Plataformas giradas: se pasa la posición al sistema de la plataforma
+            const dx = playerPos.x - p.x, dz = playerPos.z - p.z;
+            const c = Math.cos(p.rot), sn = Math.sin(p.rot);
+            const lx = dx * c - dz * sn, lz = dx * sn + dz * c;
+            if (Math.abs(lx) <= p.half && Math.abs(lz) <= p.half) {
                 if (feetY >= p.y - 0.85 && p.y > groundY) {
                     groundY = p.y;
                 }
@@ -454,7 +687,7 @@ function buildEscalatorUniverse() {
             modeIndicator.textContent = flyMode
                 ? "MODO: VUELO LIBRE (ESPACIO / SHIFT)"
                 : "MODO: CAMINATA FÍSICA (PISÁ LAS ESCALERAS)";
-            modeIndicator.style.color = flyMode ? "#ff2a6d" : "#05d9e8";
+            modeIndicator.style.color = flyMode ? "#e8ecff" : "#ff4a3d";
         }
     });
 
@@ -494,14 +727,25 @@ function buildEscalatorUniverse() {
                 step.mesh.position.set(0, step.progress * height, -step.progress * run);
             });
 
+            // Deslizamiento continuo de las imágenes junto con la cinta
+            const beltShift = config.speed * delta * config.direction;
             animatedMeshes.forEach(item => {
-                if (item.travelSpan > 0.2) {
-                    const halfSpan = item.travelSpan / 2;
-                    item.mesh.position.x += config.speed * delta * config.direction;
-                    if (item.mesh.position.x > halfSpan) item.mesh.position.x = -halfSpan;
-                    if (item.mesh.position.x < -halfSpan) item.mesh.position.x = halfSpan;
-                }
+                const off = item.texture.offset.x - item.face * beltShift / item.tileW;
+                item.texture.offset.x = ((off % 1) + 1) % 1;
             });
+        });
+
+        // Luces flotantes: se mecen y titilan apenas
+        const time = clock.elapsedTime;
+        floatingLights.forEach(fl => {
+            const k = time * fl.speed + fl.phase;
+            fl.sprite.position.set(
+                fl.base.x + Math.sin(k * 0.7) * fl.amp,
+                fl.base.y + Math.sin(k) * fl.amp,
+                fl.base.z + Math.cos(k * 0.5) * fl.amp
+            );
+            fl.sprite.material.opacity = fl.baseOpacity * (0.8 + 0.2 * Math.sin(k * 3.1));
+            if (fl.light) fl.light.position.copy(fl.sprite.position);
         });
 
         // 2. Movimiento con WASD (funciona siempre dentro de la Sección 2)

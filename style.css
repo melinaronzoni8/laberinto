@@ -1,9 +1,9 @@
 :root {
-    --bg-void: #06070a;
+    --bg-void: #0b0507;
     --surface: #0e1016;
     --border: rgba(255, 255, 255, 0.15);
-    --cyan: #05d9e8;
-    --pink: #ff2a6d;
+    --cyan: #ff4a3d;
+    --pink: #b3121f;
     --text: #f3f5f8;
     --muted: #8b949e;
 }
@@ -48,9 +48,9 @@ body {
     flex-direction: column;
     justify-content: space-between;
     padding: 36px 56px;
-    background: radial-gradient(circle at 80% 25%, rgba(5, 217, 232, 0.14) 0%, transparent 45%),
-                radial-gradient(circle at 15% 80%, rgba(255, 42, 109, 0.12) 0%, transparent 45%),
-                linear-gradient(180deg, #06070a 0%, #0b0d13 100%);
+    background: radial-gradient(circle at 78% 18%, rgba(220, 40, 30, 0.55) 0%, rgba(140, 15, 15, 0.25) 12%, transparent 40%),
+                radial-gradient(ellipse at 50% 100%, rgba(90, 20, 28, 0.35) 0%, transparent 60%),
+                linear-gradient(180deg, #2a0c10 0%, #160709 50%, #070304 100%);
     z-index: 20;
 }
 
@@ -63,6 +63,30 @@ body {
     background-size: 64px 64px;
     mask-image: radial-gradient(ellipse at center, black 40%, transparent 85%);
     pointer-events: none;
+}
+
+/* Niebla que se mueve lentamente sobre la portada */
+.fog-layer {
+    position: absolute;
+    inset: -20%;
+    pointer-events: none;
+    background:
+        radial-gradient(ellipse 45% 30% at 20% 40%, rgba(120, 40, 44, 0.35), transparent 70%),
+        radial-gradient(ellipse 50% 35% at 75% 65%, rgba(90, 30, 36, 0.3), transparent 70%),
+        radial-gradient(ellipse 40% 25% at 50% 90%, rgba(140, 50, 52, 0.22), transparent 70%);
+    filter: blur(30px);
+    animation: fog-drift 38s ease-in-out infinite alternate;
+}
+
+.fog-layer.slow {
+    animation-duration: 60s;
+    animation-direction: alternate-reverse;
+    opacity: 0.7;
+}
+
+@keyframes fog-drift {
+    from { transform: translate3d(-6%, 0, 0) scale(1); }
+    to   { transform: translate3d(6%, -3%, 0) scale(1.12); }
 }
 
 .scanline {
@@ -85,7 +109,7 @@ body {
     font-family: 'JetBrains Mono', monospace;
     font-size: 0.8rem;
     letter-spacing: 2px;
-    color: var(--muted);
+    color: #b9a6a4;
 }
 
 .pulse-dot {
@@ -120,7 +144,7 @@ body {
     line-height: 0.94;
     letter-spacing: -2px;
     margin-bottom: 24px;
-    background: linear-gradient(180deg, #ffffff 35%, #6c7685 100%);
+    background: linear-gradient(180deg, #f1e6e4 30%, #7a3a3e 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
 }
@@ -128,7 +152,7 @@ body {
 .subtitle {
     font-size: 1.08rem;
     line-height: 1.65;
-    color: #aab3c0;
+    color: #b3a3a2;
     max-width: 600px;
     margin-bottom: 38px;
 }
@@ -138,8 +162,8 @@ body {
     align-items: center;
     gap: 16px;
     padding: 20px 38px;
-    background: #ffffff;
-    color: #06070a;
+    background: #e9e0dd;
+    color: #12070a;
     border: none;
     font-family: 'JetBrains Mono', monospace;
     font-size: 0.95rem;
@@ -154,7 +178,7 @@ body {
 .primary-btn:hover {
     background: var(--cyan);
     color: #050608;
-    box-shadow: 0 0 40px rgba(5, 217, 232, 0.7);
+    box-shadow: 0 0 40px rgba(255, 60, 50, 0.6);
     transform: translateY(-2px);
 }
 
@@ -209,7 +233,7 @@ body {
 ========================================================= */
 #labyrinth-section {
     z-index: 10;
-    background: #06070a;
+    background: #1c0b0e;
 }
 
 #universe-canvas {
@@ -229,7 +253,7 @@ body {
     display: flex;
     align-items: center;
     gap: 20px;
-    background: rgba(10, 12, 18, 0.9);
+    background: rgba(16, 6, 8, 0.9);
     border: 1px solid var(--cyan);
     padding: 12px 22px;
     font-family: 'JetBrains Mono', monospace;
@@ -282,8 +306,8 @@ body {
 .hud-pill {
     font-family: 'JetBrains Mono', monospace;
     font-size: 0.76rem;
-    background: rgba(7, 8, 11, 0.78);
-    border: 1px solid rgba(5, 217, 232, 0.35);
+    background: rgba(12, 5, 7, 0.78);
+    border: 1px solid rgba(255, 74, 61, 0.35);
     color: var(--cyan);
     padding: 9px 16px;
     letter-spacing: 1.5px;
@@ -298,7 +322,7 @@ body {
     gap: 18px;
     font-family: 'JetBrains Mono', monospace;
     font-size: 0.75rem;
-    background: rgba(7, 8, 11, 0.82);
+    background: rgba(12, 5, 7, 0.82);
     border-left: 3px solid var(--pink);
     padding: 10px 18px;
     color: var(--muted);
